@@ -185,6 +185,9 @@ public class VehicleRoutePlanResource {
         String scoreExplanation = solutionManager.explain(routePlan).getSummary();
         routePlan.setSolverStatus(solverStatus);
         routePlan.setScoreExplanation(scoreExplanation);
+
+        printRoutePlan(routePlan);
+
         return routePlan;
     }
 
@@ -270,5 +273,27 @@ public class VehicleRoutePlanResource {
             return new Job(null, exception);
         }
 
+    }
+
+    private void printRoutePlan(VehicleRoutePlan routePlan) {
+        LOGGER.info("=== ROTEIRIZAÇÃO CONCLUÍDA ===");
+        LOGGER.info("Score: {}", routePlan.getScore());
+
+        for (Vehicle vehicle : routePlan.getVehicles()) {
+            StringBuilder route = new StringBuilder();
+            route.append("Van ").append(vehicle.getId()).append(" -> ");
+
+            if (vehicle.getVisits().isEmpty()) {
+                route.append("Vazia");
+            } else {
+                for (Visit visit : vehicle.getVisits()) {
+                    route.append("[").append(visit.getVisitType().name().substring(0,1)) // P ou D
+                            .append(": ").append(visit.getPassenger().getName()).append("] -> ");
+                }
+                route.append("Fim");
+            }
+            LOGGER.info(route.toString());
+        }
+        LOGGER.info("==============================");
     }
 }
