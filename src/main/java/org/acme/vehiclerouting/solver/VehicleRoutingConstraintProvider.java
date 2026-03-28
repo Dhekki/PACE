@@ -18,6 +18,7 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
     public static final String MINIMIZE_TRAVEL_TIME = "minimizeTravelTime";
     public static final String PICKUP_DELIVERY_SAME_VEHICLE = "pickupDeliverySameVehicle";
     public static final String PICKUP_BEFORE_DELIVERY = "pickupBeforeDelivery";
+    public static final String PENALIZE_EMPTY_VANS = "penalizeEmptyVans";
 
     @Override
     public Constraint[] defineConstraints(ConstraintFactory factory) {
@@ -27,7 +28,8 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
                 pickupDeliverySameVehicle(factory),
                 pickupBeforeDelivery(factory),
                 maximizeVisitsAssigned(factory),
-                minimizeTravelTime(factory)
+                minimizeTravelTime(factory),
+                penalizeEmptyVans(factory)
         };
     }
 
@@ -56,7 +58,6 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
     }
 
     protected Constraint vehicleCapacity(ConstraintFactory factory) {
-        // REESCRITO: Agora avalia a carga estado a estado, parada a parada.
         return factory.forEach(Visit.class)
                 .filter(visit -> visit.getVehicle() != null && visit.getVehicleLoad() != null)
                 .filter(visit -> visit.getVehicleLoad() > visit.getVehicle().getCapacity())
@@ -85,5 +86,12 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
                 .penalizeLong(HardMediumSoftLongScore.ONE_SOFT,
                         Vehicle::getTotalDrivingTimeSeconds)
                 .asConstraint(MINIMIZE_TRAVEL_TIME);
+    }
+
+    protected Constraint penalizeEmptyVans(ConstraintFactory factory) {
+        return factory.forEach(Vehicle.class)
+                .filter(vehicle -> vehicle.getVisits().isEmpty())
+                .penalizeLong(HardMediumSoftLongScore.ONE_SOFT, vehicle -> 1000000L)
+                .asConstraint(PENALIZE_EMPTY_VANS);
     }
 }
