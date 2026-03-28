@@ -4,8 +4,10 @@ import ai.timefold.solver.core.api.score.buildin.hardmediumsoftlong.HardMediumSo
 import ai.timefold.solver.core.api.score.stream.Constraint;
 import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
 import ai.timefold.solver.core.api.score.stream.ConstraintProvider;
+import ai.timefold.solver.core.api.score.stream.Joiners;
 
 import org.acme.vehiclerouting.domain.Visit;
+import org.acme.vehiclerouting.domain.VisitType;
 import org.acme.vehiclerouting.domain.Vehicle;
 
 public class VehicleRoutingConstraintProvider implements ConstraintProvider {
@@ -14,31 +16,52 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
     public static final String MAXIMIZE_VISITS_ASSIGNED = "maximizeVisitsAssigned";
     public static final String SERVICE_FINISHED_AFTER_MAX_END_TIME = "serviceFinishedAfterMaxEndTime";
     public static final String MINIMIZE_TRAVEL_TIME = "minimizeTravelTime";
+    public static final String PICKUP_DELIVERY_SAME_VEHICLE = "pickupDeliverySameVehicle";
+    public static final String PICKUP_BEFORE_DELIVERY = "pickupBeforeDelivery";
 
     @Override
     public Constraint[] defineConstraints(ConstraintFactory factory) {
         return new Constraint[] {
-                // Hard
                 vehicleCapacity(factory),
                 serviceFinishedAfterMaxEndTime(factory),
-
-                // Medium
+                pickupDeliverySameVehicle(factory),
+                pickupBeforeDelivery(factory),
                 maximizeVisitsAssigned(factory),
-
-                // Soft
                 minimizeTravelTime(factory)
         };
     }
 
-    // ************************************************************************
-    // Hard constraints
-    // ************************************************************************
+    protected Constraint pickupDeliverySameVehicle(ConstraintFactory factory) {
+        return factory.forEach(Visit.class)
+                .filter(visit -> visit.getVisitType() == VisitType.PICKUP)
+                .join(Visit.class,
+                        Joiners.equal(Visit::getPassenger),
+                        Joiners.filtering((pickup, delivery) -> delivery.getVisitType() == VisitType.DELIVERY))
+                .filter((pickup, delivery) -> pickup.getVehicle() != delivery.getVehicle())
+                .penalizeLong(HardMediumSoftLongScore.ONE_HARD, (pickup, delivery) -> 1L)
+                .asConstraint(PICKUP_DELIVERY_SAME_VEHICLE);
+    }
+
+    protected Constraint pickupBeforeDelivery(ConstraintFactory factory) {
+        return factory.forEach(Visit.class)
+                .filter(visit -> visit.getVisitType() == VisitType.PICKUP)
+                .join(Visit.class,
+                        Joiners.equal(Visit::getPassenger),
+                        Joiners.equal(Visit::getVehicle),
+                        Joiners.filtering((pickup, delivery) -> delivery.getVisitType() == VisitType.DELIVERY))
+                .filter((pickup, delivery) -> pickup.getArrivalTime() != null && delivery.getArrivalTime() != null
+                        && pickup.getArrivalTime().isAfter(delivery.getArrivalTime()))
+                .penalizeLong(HardMediumSoftLongScore.ONE_HARD, (pickup, delivery) -> 1L)
+                .asConstraint(PICKUP_BEFORE_DELIVERY);
+    }
 
     protected Constraint vehicleCapacity(ConstraintFactory factory) {
-        return factory.forEach(Vehicle.class)
-                .filter(vehicle -> vehicle.getTotalDemand() > vehicle.getCapacity())
+        // REESCRITO: Agora avalia a carga estado a estado, parada a parada.
+        return factory.forEach(Visit.class)
+                .filter(visit -> visit.getVehicle() != null && visit.getVehicleLoad() != null)
+                .filter(visit -> visit.getVehicleLoad() > visit.getVehicle().getCapacity())
                 .penalizeLong(HardMediumSoftLongScore.ONE_HARD,
-                        vehicle -> vehicle.getTotalDemand() - vehicle.getCapacity())
+                        visit -> visit.getVehicleLoad() - visit.getVehicle().getCapacity())
                 .asConstraint(VEHICLE_CAPACITY);
     }
 
@@ -50,20 +73,12 @@ public class VehicleRoutingConstraintProvider implements ConstraintProvider {
                 .asConstraint(SERVICE_FINISHED_AFTER_MAX_END_TIME);
     }
 
-    // ************************************************************************
-    // Medium constraints
-    // ************************************************************************
-
     protected Constraint maximizeVisitsAssigned(ConstraintFactory factory) {
         return factory.forEachIncludingUnassigned(Visit.class)
                 .filter(v -> v.getVehicle() == null)
                 .penalizeLong(HardMediumSoftLongScore.ONE_MEDIUM, v-> v.getServiceDuration().toMinutes())
                 .asConstraint(MAXIMIZE_VISITS_ASSIGNED);
     }
-
-    // ************************************************************************
-    // Soft constraints
-    // ************************************************************************
 
     protected Constraint minimizeTravelTime(ConstraintFactory factory) {
         return factory.forEach(Vehicle.class)
