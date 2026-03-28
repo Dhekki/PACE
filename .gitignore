@@ -35,3 +35,4 @@ bin/
 .DS_Store
 
 tags
+data/
