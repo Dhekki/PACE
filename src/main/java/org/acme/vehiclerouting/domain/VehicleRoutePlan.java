@@ -13,6 +13,7 @@ import ai.timefold.solver.core.api.score.buildin.hardmediumsoftlong.HardMediumSo
 import ai.timefold.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.geo.DrivingTimeCalculator;
+import org.acme.vehiclerouting.domain.geo.GraphHopperDrivingTimeCalculator;
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -47,6 +48,9 @@ public class VehicleRoutePlan {
     @PlanningEntityCollectionProperty
     private List<Vehicle> vehicles;
 
+    @ProblemFactCollectionProperty
+    private List<Passenger> passengers;
+
     @PlanningEntityCollectionProperty
     @ValueRangeProvider
     private List<Visit> visits;
@@ -70,24 +74,26 @@ public class VehicleRoutePlan {
 
     @JsonCreator
     public VehicleRoutePlan(@JsonProperty("name") String name,
-            @JsonProperty("southWestCorner") Location southWestCorner,
-            @JsonProperty("northEastCorner") Location northEastCorner,
-            @JsonProperty("startDateTime") LocalDateTime startDateTime,
-            @JsonProperty("endDateTime") LocalDateTime endDateTime,
-            @JsonProperty("vehicles") List<Vehicle> vehicles,
-            @JsonProperty("visits") List<Visit> visits) {
+                            @JsonProperty("southWestCorner") Location southWestCorner,
+                            @JsonProperty("northEastCorner") Location northEastCorner,
+                            @JsonProperty("startDateTime") LocalDateTime startDateTime,
+                            @JsonProperty("endDateTime") LocalDateTime endDateTime,
+                            @JsonProperty("vehicles") List<Vehicle> vehicles,
+                            @JsonProperty("passengers") List<Passenger> passengers,
+                            @JsonProperty("visits") List<Visit> visits) {
         this.name = name;
         this.southWestCorner = southWestCorner;
         this.northEastCorner = northEastCorner;
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.vehicles = vehicles;
+        this.passengers = passengers;
         this.visits = visits;
         List<Location> locations = Stream.concat(
                 vehicles.stream().map(Vehicle::getHomeLocation),
-                visits.stream().map(Visit::getLocation)).toList();
+                passengers.stream().flatMap(p -> Stream.of(p.getPickupLocation(), p.getDropoffLocation()))).toList();
 
-        DrivingTimeCalculator drivingTimeCalculator = HaversineDrivingTimeCalculator.getInstance();
+        DrivingTimeCalculator drivingTimeCalculator = GraphHopperDrivingTimeCalculator.getInstance();
         drivingTimeCalculator.initDrivingTimeMaps(locations);
     }
 
@@ -113,6 +119,10 @@ public class VehicleRoutePlan {
 
     public List<Vehicle> getVehicles() {
         return vehicles;
+    }
+
+    public List<Passenger> getPassengers() {
+        return passengers;
     }
 
     public List<Visit> getVisits() {
