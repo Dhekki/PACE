@@ -24,12 +24,8 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphHopperDrivingTimeCalculator.class);
     private static final GraphHopperDrivingTimeCalculator INSTANCE = new GraphHopperDrivingTimeCalculator();
 
-    private static final String GRAPH_HOPPER_URL_TEMPLATE = "http://localhost:8989/route?point=%f,%f&point=%f,%f&profile=car";
-
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
-
-    // NOVO: Proteção contra DDoS. Máximo de 20 requisições simultâneas ao Docker.
     private final Semaphore concurrentRequestsLimiter;
 
     private GraphHopperDrivingTimeCalculator() {
@@ -79,15 +75,16 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
 
     private long fetchRouteTime(Location from, Location to) {
         try {
-            // Segura a thread se já tiver 20 requisições rolando no Docker
             concurrentRequestsLimiter.acquire();
 
-            String url = String.format(Locale.US, GRAPH_HOPPER_URL_TEMPLATE,
+            String queryParams = String.format(Locale.US, "point=%f,%f&point=%f,%f&profile=car",
                     from.getLatitude(), from.getLongitude(),
                     to.getLatitude(), to.getLongitude());
 
+            URI uri = new URI("http", null, "localhost", 8989, "/route", queryParams, null);
+
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(uri)
                     .GET()
                     .build();
 
@@ -95,22 +92,23 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
 
             if (response.statusCode() == 200) {
                 JsonNode rootNode = objectMapper.readTree(response.body());
-                long timeInMillis = rootNode.path("paths").get(0).path("time").asLong();
-                return timeInMillis / 1000L;
+                JsonNode paths = rootNode.path("paths");
+
+                if (paths.isArray() && !paths.isEmpty()) {
+                    long timeInMillis = paths.get(0).path("time").asLong();
+                    return timeInMillis / 1000L;
+                } else {
+                    LOGGER.warn("GH retornou 200 OK mas não achou rota (paths vazio). Fallback ativado.");
+                }
             } else {
-                // Algumas coordenadas aleatórias podem cair em áreas isoladas sem ruas.
-                // O GraphHopper retorna 400 Bad Request avisando que "Não achou o ponto".
-                LOGGER.warn("Rota indisponível no mapa (Status: {}). Acionando Fallback pontual.", response.statusCode());
+                LOGGER.warn("Rota indisponível no mapa (Status: {}). URL tentada: {}", response.statusCode(), uri);
             }
         } catch (Exception e) {
-            // Agora sabemos exatamente o que quebrou se falhar de novo
-            LOGGER.warn("Exceção real na chamada HTTP: {}", e.getMessage());
+            LOGGER.error("Exceção real na chamada HTTP para: {} -> {}", from, to, e);
         } finally {
-            // Libera a vaga para a próxima requisição na fila
             concurrentRequestsLimiter.release();
         }
 
-        // Retorna a linha reta apenas para o trecho problemático
         return HaversineDrivingTimeCalculator.getInstance().calculateDrivingTime(from, to);
     }
 }
