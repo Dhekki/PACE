@@ -41,41 +41,19 @@ public class Vehicle implements LocationAware {
         this.visits = new ArrayList<>();
     }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public int getCapacity() { return capacity; }
+    public void setCapacity(int capacity) { this.capacity = capacity; }
 
-    public int getCapacity() {
-        return capacity;
-    }
+    public Location getHomeLocation() { return homeLocation; }
+    public void setHomeLocation(Location homeLocation) { this.homeLocation = homeLocation; }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
+    public LocalDateTime getDepartureTime() { return departureTime; }
 
-    public Location getHomeLocation() {
-        return homeLocation;
-    }
-
-    public void setHomeLocation(Location homeLocation) {
-        this.homeLocation = homeLocation;
-    }
-
-    public LocalDateTime getDepartureTime() {
-        return departureTime;
-    }
-
-    public List<Visit> getVisits() {
-        return visits;
-    }
-
-    public void setVisits(List<Visit> visits) {
-        this.visits = visits;
-    }
+    public List<Visit> getVisits() { return visits; }
+    public void setVisits(List<Visit> visits) { this.visits = visits; }
 
     // ************************************************************************
     // Complex methods
@@ -85,15 +63,6 @@ public class Vehicle implements LocationAware {
     @Override
     public Location getLocation() {
         return homeLocation;
-    }
-
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    public int getTotalDemand() {
-        int totalDemand = 0;
-        for (Visit visit : visits) {
-            totalDemand += visit.getDemand();
-        }
-        return totalDemand;
     }
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -128,5 +97,4 @@ public class Vehicle implements LocationAware {
     public String toString() {
         return id;
     }
-
 }
