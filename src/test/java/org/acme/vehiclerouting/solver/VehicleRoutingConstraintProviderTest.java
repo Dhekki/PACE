@@ -11,9 +11,11 @@ import jakarta.inject.Inject;
 import ai.timefold.solver.test.api.score.stream.ConstraintVerifier;
 
 import org.acme.vehiclerouting.domain.Location;
+import org.acme.vehiclerouting.domain.Passenger;
 import org.acme.vehiclerouting.domain.Vehicle;
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 import org.acme.vehiclerouting.domain.Visit;
+import org.acme.vehiclerouting.domain.VisitType;
 import org.acme.vehiclerouting.domain.geo.HaversineDrivingTimeCalculator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,11 +25,6 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class VehicleRoutingConstraintProviderTest {
 
-    /*
-     * LOCATION_1 to LOCATION_2 is approx. 11713 m ~843 seconds of driving time
-     * LOCATION_2 to LOCATION_3 is approx. 8880 m ~639 seconds of driving time
-     * LOCATION_1 to LOCATION_3 is approx. 13075 m ~941 seconds of driving time
-     */
     private static final Location LOCATION_1 = new Location(49.288087, 16.562172);
     private static final Location LOCATION_2 = new Location(49.190922, 16.624466);
     private static final Location LOCATION_3 = new Location(49.1767533245638, 16.50422914190477);
@@ -49,8 +46,11 @@ class VehicleRoutingConstraintProviderTest {
     @Test
     void vehicleCapacityUnpenalized() {
         Vehicle vehicleA = new Vehicle("1", 100, LOCATION_1, TOMORROW_07_00);
-        Visit visit1 = new Visit("2", "John", LOCATION_2, 80, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        Passenger p1 = new Passenger("p1", "John", LOCATION_2, LOCATION_3, 80);
+        Visit visit1 = new Visit("2", p1, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        visit1.setVehicleLoad(80);
         vehicleA.getVisits().add(visit1);
+        visit1.setVehicle(vehicleA);
 
         constraintVerifier.verifyThat(VehicleRoutingConstraintProvider::vehicleCapacity)
                 .given(vehicleA, visit1)
@@ -59,7 +59,8 @@ class VehicleRoutingConstraintProviderTest {
 
     @Test
     void unassignedPenalizedByDuration() {
-        Visit visit = new Visit("2", "John", LOCATION_2, 80, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        Passenger p1 = new Passenger("p1", "John", LOCATION_2, LOCATION_3, 80);
+        Visit visit = new Visit("2", p1, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
 
         constraintVerifier.verifyThat(VehicleRoutingConstraintProvider::maximizeVisitsAssigned)
                 .given(visit)
@@ -69,10 +70,18 @@ class VehicleRoutingConstraintProviderTest {
     @Test
     void vehicleCapacityPenalized() {
         Vehicle vehicleA = new Vehicle("1", 100, LOCATION_1, TOMORROW_07_00);
-        Visit visit1 = new Visit("2", "John", LOCATION_2, 80, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+
+        Passenger p1 = new Passenger("p1", "John", LOCATION_2, LOCATION_3, 80);
+        Visit visit1 = new Visit("2", p1, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        visit1.setVehicleLoad(80);
         vehicleA.getVisits().add(visit1);
-        Visit visit2 = new Visit("3", "Paul", LOCATION_3, 40, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        visit1.setVehicle(vehicleA);
+
+        Passenger p2 = new Passenger("p2", "Paul", LOCATION_3, LOCATION_1, 40);
+        Visit visit2 = new Visit("3", p2, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        visit2.setVehicleLoad(120);
         vehicleA.getVisits().add(visit2);
+        visit2.setVehicle(vehicleA);
 
         constraintVerifier.verifyThat(VehicleRoutingConstraintProvider::vehicleCapacity)
                 .given(vehicleA, visit1, visit2)
@@ -82,14 +91,15 @@ class VehicleRoutingConstraintProviderTest {
     @Test
     void totalDrivingTime() {
         Vehicle vehicleA = new Vehicle("1", 100, LOCATION_1, TOMORROW_07_00);
-        Visit visit1 = new Visit("2", "John", LOCATION_2, 80, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        Passenger p1 = new Passenger("p1", "John", LOCATION_2, LOCATION_3, 80);
+        Visit visit1 = new Visit("2", p1, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
         vehicleA.getVisits().add(visit1);
-        Visit visit2 = new Visit("3", "Paul", LOCATION_3, 40, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
+        Visit visit2 = new Visit("3", p1, VisitType.DELIVERY, TOMORROW_08_00, TOMORROW_10_00, Duration.ofMinutes(30L));
         vehicleA.getVisits().add(visit2);
 
         constraintVerifier.verifyThat(VehicleRoutingConstraintProvider::minimizeTravelTime)
                 .given(vehicleA, visit1, visit2)
-                .penalizesBy(2423L); // The sum of the approximate driving time between all three locations.
+                .penalizesBy(2423L);
     }
 
     @Test
@@ -99,10 +109,14 @@ class VehicleRoutingConstraintProviderTest {
         LocalDateTime tomorrow_10_30 = LocalDateTime.of(TOMORROW, LocalTime.of(10, 30));
         LocalDateTime tomorrow_18_00 = LocalDateTime.of(TOMORROW, LocalTime.of(18, 0));
 
-        Visit visit1 = new Visit("2", "John", LOCATION_2, 80, TOMORROW_08_00, tomorrow_18_00, Duration.ofHours(1L));
+        Passenger p1 = new Passenger("p1", "John", LOCATION_2, LOCATION_3, 80);
+        Visit visit1 = new Visit("2", p1, VisitType.PICKUP, TOMORROW_08_00, tomorrow_18_00, Duration.ofHours(1L));
         visit1.setArrivalTime(tomorrow_08_40);
-        Visit visit2 = new Visit("3", "Paul", LOCATION_3, 40, TOMORROW_08_00, TOMORROW_09_00, Duration.ofHours(1L));
+
+        Passenger p2 = new Passenger("p2", "Paul", LOCATION_3, LOCATION_1, 40);
+        Visit visit2 = new Visit("3", p2, VisitType.PICKUP, TOMORROW_08_00, TOMORROW_09_00, Duration.ofHours(1L));
         visit2.setArrivalTime(tomorrow_10_30);
+
         Vehicle vehicleA = new Vehicle("1", 100, LOCATION_1, TOMORROW_07_00);
 
         connect(vehicleA, visit1, visit2);

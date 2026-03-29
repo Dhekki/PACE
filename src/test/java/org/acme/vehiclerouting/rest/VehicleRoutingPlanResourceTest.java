@@ -22,8 +22,10 @@ import ai.timefold.solver.core.api.score.constraint.ConstraintRef;
 import ai.timefold.solver.core.api.solver.SolverStatus;
 
 import org.acme.vehiclerouting.domain.Location;
+import org.acme.vehiclerouting.domain.Passenger;
 import org.acme.vehiclerouting.domain.VehicleRoutePlan;
 import org.acme.vehiclerouting.domain.Visit;
+import org.acme.vehiclerouting.domain.VisitType;
 import org.acme.vehiclerouting.domain.dto.ApplyRecommendationRequest;
 import org.acme.vehiclerouting.domain.dto.RecommendationRequest;
 import org.acme.vehiclerouting.domain.dto.VehicleRecommendation;
@@ -44,8 +46,6 @@ class VehicleRoutingPlanResourceTest {
 
     @BeforeAll
     static void initializeJacksonParser() {
-        // Registers required org.acme.vehiclerouting.domain.jackson.VRPScoreAnalysisJacksonModule,
-        // see META-INF/services/com.fasterxml.jackson.databind.Module.
         OBJECT_MAPPER.findAndRegisterModules();
     }
 
@@ -74,7 +74,7 @@ class VehicleRoutingPlanResourceTest {
 
         assertNotNull(analysis.score());
         ConstraintAnalysis<?> minimizeTravelTimeAnalysis =
-                analysis.getConstraintAnalysis(ConstraintRef.of(VehicleRoutePlan.class.getPackageName(), "minimizeTravelTime"));
+                analysis.getConstraintAnalysis(ConstraintRef.of("org.acme.vehiclerouting.solver", "minimizeTravelTime"));
         assertNotNull(minimizeTravelTimeAnalysis);
         assertNotNull(minimizeTravelTimeAnalysis.matches());
         assertFalse(minimizeTravelTimeAnalysis.matches().isEmpty());
@@ -100,13 +100,12 @@ class VehicleRoutingPlanResourceTest {
 
         assertNotNull(analysis.score());
         ConstraintAnalysis<?> minimizeTravelTimeAnalysis =
-                analysis.getConstraintAnalysis(ConstraintRef.of(VehicleRoutePlan.class.getPackageName(), "minimizeTravelTime"));
+                analysis.getConstraintAnalysis(ConstraintRef.of("org.acme.vehiclerouting.solver", "minimizeTravelTime"));
         assertNotNull(minimizeTravelTimeAnalysis);
         assertNull(minimizeTravelTimeAnalysis.matches());
     }
 
     private VehicleRoutePlan generateInitialSolution() {
-        // Fetching the problem data
         VehicleRoutePlan vehicleRoutePlan = given()
                 .when().get("/demo-data/FIRENZE")
                 .then()
@@ -114,7 +113,6 @@ class VehicleRoutingPlanResourceTest {
                 .extract()
                 .as(VehicleRoutePlan.class);
 
-        // Starting the optimization
         String jobId = given()
                 .contentType(ContentType.JSON)
                 .body(vehicleRoutePlan)
@@ -125,7 +123,6 @@ class VehicleRoutingPlanResourceTest {
                 .extract()
                 .asString();
 
-        // Waiting for the solution
         await()
                 .atMost(Duration.ofMinutes(1))
                 .pollInterval(Duration.ofMillis(500L))
@@ -138,9 +135,12 @@ class VehicleRoutingPlanResourceTest {
     }
 
     private Visit generateNewVisit(VehicleRoutePlan solution) {
+        Passenger passenger = new Passenger("p_test", "Test Passenger",
+                new Location(43.778008, 11.223969), new Location(43.778008, 11.223969), 2);
+
         Visit newVisit = new Visit(String.valueOf(solution.getVisits().size() + 1),
-                "visit%d".formatted(solution.getVisits().size() + 1), new Location(43.77800837529796, 11.223969038020176),
-                2, LocalDateTime.now().plusDays(1).withHour(8).withMinute(0),
+                passenger, VisitType.PICKUP,
+                LocalDateTime.now().plusDays(1).withHour(8).withMinute(0),
                 LocalDateTime.now().plusDays(1).withHour(14).withMinute(0),
                 Duration.ofMinutes(10));
         solution.getVisits().add(newVisit);
@@ -161,13 +161,11 @@ class VehicleRoutingPlanResourceTest {
     }
 
     private VehicleRoutePlan applyBestRecommendation(VehicleRoutePlan solution, Visit newVisit,
-            List<Pair<VehicleRecommendation, ScoreAnalysis>> recommendedAssignmentsList) {
-        // Selects the best recommendation
+                                                     List<Pair<VehicleRecommendation, ScoreAnalysis>> recommendedAssignmentsList) {
         VehicleRecommendation recommendation = recommendedAssignmentsList.get(0).getLeft();
         ApplyRecommendationRequest applyRequest = new ApplyRecommendationRequest(solution, newVisit.getId(),
                 recommendation.vehicleId(), recommendation.index());
 
-        // Applies the recommendation
         return given()
                 .contentType(ContentType.JSON)
                 .body(applyRequest)
@@ -181,20 +179,16 @@ class VehicleRoutingPlanResourceTest {
 
     @Test
     void recommendedAssignment() {
-        // Generate an initial solution
         VehicleRoutePlan solution = generateInitialSolution();
         assertNotNull(solution);
         assertEquals(SolverStatus.NOT_SOLVING, solution.getSolverStatus());
 
-        // Create a new visit
         Visit newVisit = generateNewVisit(solution);
 
-        // Request recommendation
         List<Pair<VehicleRecommendation, ScoreAnalysis>> recommendations = getRecommendations(solution, newVisit);
         assertNotNull(recommendations);
         assertEquals(5, recommendations.size());
 
-        // Apply the best recommendation
         VehicleRoutePlan updatedSolution = applyBestRecommendation(solution, newVisit, recommendations);
         assertNotNull(updatedSolution);
         assertNotEquals(updatedSolution.getScore().toString(), solution.getScore().toString());
