@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.acme.vehiclerouting.domain.Location;
 import org.slf4j.Logger;
@@ -28,9 +29,11 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
     private final ObjectMapper objectMapper;
     private final Semaphore concurrentRequestsLimiter;
 
+    private final AtomicBoolean isApiDown = new AtomicBoolean(false);
+
     private GraphHopperDrivingTimeCalculator() {
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(3))
                 .build();
         this.objectMapper = new ObjectMapper();
         this.concurrentRequestsLimiter = new Semaphore(20);
@@ -53,8 +56,10 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
             return;
         }
 
+        isApiDown.set(false);
+
         int totalCalls = uniqueLocations.size() * uniqueLocations.size();
-        LOGGER.info("Calculando matriz O(1) com {} pontos geográficos (Total: {} requisições limitadas a 20 por vez)...", uniqueLocations.size(), totalCalls);
+        LOGGER.info("Iniciando cálculo O(1) de {} rotas via GraphHopper...", totalCalls);
 
         uniqueLocations.parallelStream().forEach(from -> {
             Map<Location, Long> drivingTimeSeconds = new HashMap<>();
@@ -70,10 +75,19 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
             from.setDrivingTimeSeconds(drivingTimeSeconds);
         });
 
-        LOGGER.info("Cache O(1) de Feira de Santana populado com sucesso!");
+        if (isApiDown.get()) {
+            LOGGER.error("--- FALHA CRÍTICA NO GRAPHHOPPER ---");
+            LOGGER.error("O motor de rotas falhou ou está desligado. O sistema assumiu as rotas usando linha reta (Haversine).");
+        } else {
+            LOGGER.info("Cache O(1) populado com sucesso usando as ruas de Feira de Santana!");
+        }
     }
 
     private long fetchRouteTime(Location from, Location to) {
+        if (isApiDown.get()) {
+            return HaversineDrivingTimeCalculator.getInstance().calculateDrivingTime(from, to);
+        }
+
         try {
             concurrentRequestsLimiter.acquire();
 
@@ -97,14 +111,16 @@ public class GraphHopperDrivingTimeCalculator implements DrivingTimeCalculator {
                 if (paths.isArray() && !paths.isEmpty()) {
                     long timeInMillis = paths.get(0).path("time").asLong();
                     return timeInMillis / 1000L;
-                } else {
-                    LOGGER.warn("GH retornou 200 OK mas não achou rota (paths vazio). Fallback ativado.");
                 }
             } else {
-                LOGGER.warn("Rota indisponível no mapa (Status: {}). URL tentada: {}", response.statusCode(), uri);
+                LOGGER.warn("Ponto isolado ou sem rua (Status: {}). Coordenadas: {} -> {}", response.statusCode(), from, to);
+            }
+        } catch (java.net.ConnectException e) {
+            if (isApiDown.compareAndSet(false, true)) {
+                LOGGER.error("Conexão Recusada! O container GraphHopper está desligado na porta 8989.");
             }
         } catch (Exception e) {
-            LOGGER.error("Exceção real na chamada HTTP para: {} -> {}", from, to, e);
+            LOGGER.warn("Erro pontual de rede/parse: {}", e.getMessage());
         } finally {
             concurrentRequestsLimiter.release();
         }
