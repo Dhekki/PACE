@@ -135,10 +135,10 @@ function getHomeLocationMarker(vehicle) {
     }
     const color = colorByVehicle(vehicle);
     const homeIcon = L.divIcon({
-        html: `<i class="fas fa-home" style="color: ${color.bg}; font-size: 20px; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;"></i>`,
+        html: `<i class="fas fa-shuttle-van" style="color: ${color.bg}; font-size: 24px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;"></i>`,
         className: 'home-location-icon',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
     });
     marker = L.marker(vehicle.homeLocation, { icon: homeIcon });
     marker.addTo(homeLocationGroup).bindPopup();
@@ -151,7 +151,37 @@ function getVisitMarker(visit) {
     if (marker) {
         return marker;
     }
-    marker = L.circleMarker(visit.location);
+
+    let bgColor = '#999999';
+    if (visit.vehicle != null) {
+        bgColor = pickColor('vehicle' + visit.vehicle).bg;
+    }
+
+    let isPickup = visit.name && visit.name.includes('PICKUP');
+
+    let iconClass = isPickup ? 'fa-street-view' : 'fa-flag-checkered';
+
+    const visitIcon = L.divIcon({
+        html: `
+            <div style="
+                background-color: ${bgColor}; 
+                border: 2px solid white; 
+                border-radius: 50%; 
+                width: 24px; 
+                height: 24px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                box-shadow: 0 0 4px rgba(0,0,0,0.5);">
+                <i class="fas ${iconClass}" style="color: white; font-size: 12px;"></i>
+            </div>
+        `,
+        className: 'visit-custom-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+
+    marker = L.marker(visit.location, { icon: visitIcon });
     marker.addTo(visitGroup).bindPopup();
     visitMarkerByIdMap.set(visit.id, marker);
     return marker;
@@ -172,7 +202,7 @@ function renderRoutes(solution) {
         vehiclesTable.append(`
       <tr>
         <td>
-          <i class="fas fa-home" id="home-${id}"
+          <i class="fas fa-shuttle-van" id="home-${id}"
             style="color: ${color.bg}; font-size: 1.2rem; display: inline-block; width: 1rem; text-align: center">
           </i>
         </td>
@@ -188,16 +218,29 @@ function renderRoutes(solution) {
     });
 
     solution.visits.forEach(function (visit) {
-        const marker = getVisitMarker(visit);
-        marker.setPopupContent(visitPopupContent(visit));
-        if (visit.vehicle != null) {
-            const vehicle = solution.vehicles.find(v => v.id === visit.vehicle);
-            if (vehicle) {
-                marker.setStyle({color: colorByVehicle(vehicle).bg, fillOpacity: 0.8});
-            }
-        } else {
-            marker.setStyle({color: '#999999', fillOpacity: 0.5});
+        if (visitMarkerByIdMap.has(visit.id)) {
+            visitGroup.removeLayer(visitMarkerByIdMap.get(visit.id));
+            visitMarkerByIdMap.delete(visit.id);
         }
+
+        const marker = getVisitMarker(visit);
+
+        let popTitle = visit.name.includes('PICKUP') ? "🚶 Embarque" : "🏁 Desembarque";
+        let passengerName = visit.name.split(' (')[0];
+
+        const arrival = visit.arrivalTime ? `<b>Chegada Prevista:</b> ${showTimeOnly(visit.arrivalTime)}<br>` : '';
+        const window = `<b>Janela:</b> ${showTimeOnly(visit.minStartTime)} até ${showTimeOnly(visit.maxEndTime)}`;
+
+        let popupHtml = `
+            <div style="font-family: sans-serif; min-width: 150px;">
+                <h5 style="margin-bottom: 5px; color: #333;">${popTitle}</h5>
+                <h6 style="margin-top: 0; color: #666; border-bottom: 1px solid #ccc; padding-bottom: 5px;">${passengerName}</h6>
+                ${arrival}
+                ${window}
+            </div>
+        `;
+
+        marker.setPopupContent(popupHtml);
     });
 
     routeGroup.clearLayers();
