@@ -40,28 +40,17 @@ public class VehicleRouteDemoResource {
 
     private static final String[] FIRST_NAMES = { "Amy", "Beth", "Carl", "Dan", "Elsa", "Flo", "Gus", "Hugo", "Ivy", "Jay" };
     private static final String[] LAST_NAMES = { "Cole", "Fox", "Green", "Jones", "King", "Li", "Poe", "Rye", "Smith", "Watt" };
-    private static final int[] SERVICE_DURATION_MINUTES = { 10, 20, 30, 40 };
-    private static final LocalTime MORNING_WINDOW_START = LocalTime.of(8, 0);
-    private static final LocalTime MORNING_WINDOW_END = LocalTime.of(12, 0);
-    private static final LocalTime AFTERNOON_WINDOW_START = LocalTime.of(13, 0);
-    private static final LocalTime AFTERNOON_WINDOW_END = LocalTime.of(18, 0);
+    private static final int[] SERVICE_DURATION_MINUTES = { 2, 3, 4, 5 };
 
     public enum DemoData {
-        FEIRA_DE_SANTANA(0, 50, 6, LocalTime.of(7, 30),
-                1, 2, 15, 30,
-                new Location(-12.3000, -39.0000), // SouthWest Corner
-                new Location(-12.2200, -38.9200)), // NorthEast Corner
+        FEIRA_DE_SANTANA(0, 40, 3, LocalTime.of(5, 30),
+                1, 2, 10, 15,
+                new Location(-12.2850, -38.9800),
+                new Location(-12.2200, -38.9200)),
         PHILADELPHIA(1, 55, 6, LocalTime.of(7, 30),
                 1, 2, 15, 30,
                 new Location(39.7656099067391, -76.83782328143754),
-                new Location(40.77636644354855, -74.9300739430771)),
-        HARTFORT(2, 50, 6, LocalTime.of(7, 30),
-                1, 3, 20, 30,
-                new Location(41.48366520850297, -73.15901689943055),
-                new Location(41.99512052869307, -72.25114548877427)),
-        FIRENZE(3, 77, 6, LocalTime.of(7, 30),
-                1, 2, 20, 40,
-                new Location(43.751466, 11.177210), new Location(43.809291, 11.290195));
+                new Location(40.77636644354855, -74.9300739430771));
 
         private long seed;
         private int visitCount;
@@ -163,27 +152,34 @@ public class VehicleRouteDemoResource {
         List<Visit> visits = new ArrayList<>();
 
         for (Passenger passenger : passengers) {
-            boolean morningTimeWindow = random.nextBoolean();
 
-            LocalDateTime minStartTime =
-                    morningTimeWindow ? tomorrowAt(MORNING_WINDOW_START) : tomorrowAt(AFTERNOON_WINDOW_START);
-            LocalDateTime maxEndTime = morningTimeWindow ? tomorrowAt(MORNING_WINDOW_END) : tomorrowAt(AFTERNOON_WINDOW_END);
+            int hour = 6 + random.nextInt(3);
+            int minute = random.nextInt(4) * 15;
+
+            LocalTime passengerTargetTime = LocalTime.of(hour, minute);
+
+            LocalDateTime pickupMinStart = tomorrowAt(passengerTargetTime);
+            LocalDateTime pickupMaxEnd = pickupMinStart.plusMinutes(30);
+
+            LocalDateTime deliveryMinStart = pickupMinStart;
+            LocalDateTime deliveryMaxEnd = pickupMinStart.plusMinutes(90);
+
             int serviceDurationMinutes = SERVICE_DURATION_MINUTES[random.nextInt(SERVICE_DURATION_MINUTES.length)];
 
             visits.add(new Visit(
                     String.valueOf(visitSequence.incrementAndGet()),
                     passenger,
                     VisitType.PICKUP,
-                    minStartTime,
-                    maxEndTime,
+                    pickupMinStart,
+                    pickupMaxEnd,
                     Duration.ofMinutes(serviceDurationMinutes)));
 
             visits.add(new Visit(
                     String.valueOf(visitSequence.incrementAndGet()),
                     passenger,
                     VisitType.DELIVERY,
-                    minStartTime,
-                    maxEndTime,
+                    deliveryMinStart,
+                    deliveryMaxEnd,
                     Duration.ofMinutes(serviceDurationMinutes)));
         }
 
