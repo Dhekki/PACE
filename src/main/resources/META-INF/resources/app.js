@@ -162,7 +162,7 @@ function renderRoutes(solution) {
         const bounds = [solution.southWestCorner, solution.northEastCorner];
         map.fitBounds(bounds);
     }
-    // Vehicles
+
     vehiclesTable.children().remove();
     solution.vehicles.forEach(function (vehicle) {
         getHomeLocationMarker(vehicle).setPopupContent(homeLocationPopupContent(vehicle));
@@ -186,7 +186,7 @@ function renderRoutes(solution) {
         <td>${formatDrivingTime(totalDrivingTimeSeconds)}</td>
       </tr>`);
     });
-    // Visits
+
     solution.visits.forEach(function (visit) {
         const marker = getVisitMarker(visit);
         marker.setPopupContent(visitPopupContent(visit));
@@ -199,16 +199,33 @@ function renderRoutes(solution) {
             marker.setStyle({color: '#999999', fillOpacity: 0.5});
         }
     });
-    // Route
+
     routeGroup.clearLayers();
     const visitByIdMap = new Map(solution.visits.map(visit => [visit.id, visit]));
+
     for (let vehicle of solution.vehicles) {
+        if (!vehicle.visits || vehicle.visits.length === 0) continue;
+
+        const color = colorByVehicle(vehicle).bg;
+
         const homeLocation = vehicle.homeLocation;
         const locations = vehicle.visits.map(visitId => visitByIdMap.get(visitId).location);
-        L.polyline([homeLocation, ...locations, homeLocation], {color: colorByVehicle(vehicle).bg}).addTo(routeGroup);
+        const routePoints = [homeLocation, ...locations, homeLocation];
+
+        const pointParams = routePoints.map(loc => `point=${loc[0]},${loc[1]}`).join('&');
+        const ghUrl = `http://localhost:8989/route?${pointParams}&profile=car&points_encoded=false`;
+
+        $.getJSON(ghUrl, function(data) {
+            if (data && data.paths && data.paths.length > 0) {
+                const coordinates = data.paths[0].points.coordinates.map(coord => [coord[1], coord[0]]);
+                L.polyline(coordinates, {color: color, weight: 5, opacity: 0.8}).addTo(routeGroup);
+            }
+        }).fail(function() {
+            console.warn(`Falha ao buscar geometria da Van ${vehicle.id}. Usando linha reta.`);
+            L.polyline(routePoints, {color: color, dashArray: '5, 10'}).addTo(routeGroup);
+        });
     }
 
-    // Summary
     $('#score').text(solution.score);
     $("#info").text(`This dataset has ${solution.visits.length} visits who need to be assigned to ${solution.vehicles.length} vehicles.`);
     $('#drivingTime').text(formatDrivingTime(solution.totalDrivingTimeSeconds));
