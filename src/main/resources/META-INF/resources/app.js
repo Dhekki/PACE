@@ -112,8 +112,8 @@ function formatDrivingTime(drivingTimeInSeconds) {
 }
 
 function homeLocationPopupContent(vehicle) {
-    return `<h5>Vehicle ${vehicle.id}</h5>
-Home Location`;
+    return `<h5>Veículo ${vehicle.id}</h5>
+Garagem / Ponto de Partida`;
 }
 
 function visitPopupContent(visit) {
@@ -198,7 +198,6 @@ function renderRoutes(solution) {
         getHomeLocationMarker(vehicle).setPopupContent(homeLocationPopupContent(vehicle));
 
         const {id, capacity, maxLoad, totalDrivingTimeSeconds} = vehicle;
-
         const percentage = maxLoad / capacity * 100;
         const color = colorByVehicle(vehicle);
 
@@ -209,7 +208,7 @@ function renderRoutes(solution) {
             style="color: ${color.bg}; font-size: 1.2rem; display: inline-block; width: 1rem; text-align: center">
           </i>
         </td>
-        <td>Vehicle ${id}</td>
+        <td>Veículo ${id}</td>
         <td>
           <div class="progress" data-bs-toggle="tooltip-load" data-bs-placement="left" data-html="true"
             title="Pico Máximo: ${maxLoad} passageiros / Capacidade: ${capacity}">
@@ -228,11 +227,11 @@ function renderRoutes(solution) {
 
         const marker = getVisitMarker(visit);
 
-        let popTitle = visit.name.includes('PICKUP') ? "🚶 Embarque" : "🏁 Desembarque";
+        let popTitle = visit.name.includes('PICKUP') ? "Embarque" : "Desembarque";
         let passengerName = visit.name.split(' (')[0];
 
         const arrival = visit.arrivalTime ? `<b>Chegada Prevista:</b> ${showTimeOnly(visit.arrivalTime)}<br>` : '';
-        const window = `<b>Janela:</b> ${showTimeOnly(visit.minStartTime)} até ${showTimeOnly(visit.maxEndTime)}`;
+        const window = `<b>Janela de Tempo:</b> ${showTimeOnly(visit.minStartTime)} até ${showTimeOnly(visit.maxEndTime)}`;
 
         let popupHtml = `
             <div style="font-family: sans-serif; min-width: 150px;">
@@ -253,7 +252,6 @@ function renderRoutes(solution) {
         if (!vehicle.visits || vehicle.visits.length === 0) continue;
 
         const color = colorByVehicle(vehicle).bg;
-
         const homeLocation = vehicle.homeLocation;
         const locations = vehicle.visits.map(visitId => visitByIdMap.get(visitId).location);
         const routePoints = [homeLocation, ...locations, homeLocation];
@@ -273,7 +271,8 @@ function renderRoutes(solution) {
     }
 
     $('#score').text(solution.score);
-    $("#info").text(`This dataset has ${solution.visits.length} visits who need to be assigned to ${solution.vehicles.length} vehicles.`);
+    let totalPassengers = solution.visits.length / 2;
+    $("#info").text(`Este cenário possui ${totalPassengers} passageiros aguardando distribuição entre ${solution.vehicles.length} veículos.`);
     $('#drivingTime').text(formatDrivingTime(solution.totalDrivingTimeSeconds));
 }
 
