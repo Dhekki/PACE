@@ -196,9 +196,12 @@ function renderRoutes(solution) {
     vehiclesTable.children().remove();
     solution.vehicles.forEach(function (vehicle) {
         getHomeLocationMarker(vehicle).setPopupContent(homeLocationPopupContent(vehicle));
-        const {id, capacity, totalDemand, totalDrivingTimeSeconds} = vehicle;
-        const percentage = totalDemand / capacity * 100;
+
+        const {id, capacity, maxLoad, totalDrivingTimeSeconds} = vehicle;
+
+        const percentage = maxLoad / capacity * 100;
         const color = colorByVehicle(vehicle);
+
         vehiclesTable.append(`
       <tr>
         <td>
@@ -209,8 +212,8 @@ function renderRoutes(solution) {
         <td>Vehicle ${id}</td>
         <td>
           <div class="progress" data-bs-toggle="tooltip-load" data-bs-placement="left" data-html="true"
-            title="Cargo: ${totalDemand} / Capacity: ${capacity}">
-            <div class="progress-bar" role="progressbar" style="width: ${percentage}%">${totalDemand}/${capacity}</div>
+            title="Pico Máximo: ${maxLoad} passageiros / Capacidade: ${capacity}">
+            <div class="progress-bar" role="progressbar" style="width: ${percentage}%">${maxLoad}/${capacity}</div>
           </div>
         </td>
         <td>${formatDrivingTime(totalDrivingTimeSeconds)}</td>
