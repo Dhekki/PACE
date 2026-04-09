@@ -93,6 +93,20 @@ public class Vehicle implements LocationAware {
         return lastVisit.getDepartureTime().plusSeconds(lastVisit.getLocation().getDrivingTimeTo(homeLocation));
     }
 
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public int getMaxLoad() {
+        if (visits == null || visits.isEmpty()) {
+            return 0;
+        }
+        int max = 0;
+        for (Visit visit : visits) {
+            if (visit.getVehicleLoad() != null && visit.getVehicleLoad() > max) {
+                max = visit.getVehicleLoad();
+            }
+        }
+        return max;
+    }
+
     @Override
     public String toString() {
         return id;
