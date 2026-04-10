@@ -329,14 +329,15 @@ function renderTimelines(routePlan) {
 
         if (visit.vehicle == null || !visit.arrivalTime || !visit.startServiceTime || !visit.departureTime) {
             const byJobJobElement = $(`<div/>`)
-                .append($(`<h5 class="card-title mb-1"/>`).text(`Não Atribuído`)); // Traduzido
+                .append($(`<h5 class="card-title mb-1"/>`).text(`Não Atribuído`));
 
             byVisitItemData.add({
                 id: visit.id + '_unassigned',
                 group: visit.id,
                 content: byJobJobElement.html(),
                 start: minStartTime.toString(),
-                end: minStartTime.plus(serviceDuration).toString(),
+                type: 'box',
+                align: 'left',
                 style: "background-color: #EF292999"
             });
         } else {
@@ -397,7 +398,8 @@ function renderTimelines(routePlan) {
                 group: visit.id,
                 content: byVisitElement.html(),
                 start: visit.startServiceTime,
-                end: visit.departureTime,
+                type: 'box',
+                align: 'left',
                 style: "background-color: " + serviceElementBackground
             });
         }
