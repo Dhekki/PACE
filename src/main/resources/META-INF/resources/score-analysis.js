@@ -32,11 +32,11 @@ function visualizeScoreAnalysis(scoreAnalysisModalContent, solution, endpointPat
         const analysisTable = $(`<table class="table"/>`).css({textAlign: 'center'});
         const analysisTHead = $(`<thead/>`).append($(`<tr/>`)
             .append($(`<th></th>`))
-            .append($(`<th>Restrição Aplicada</th>`).css({textAlign: 'left'}))
-            .append($(`<th>Tipo</th>`))
-            .append($(`<th>Ocorrências</th>`))
-            .append($(`<th>Peso</th>`))
-            .append($(`<th>Pontuação</th>`))
+            .append($(`<th>Restrição Aplicada <i class="fas fa-info-circle text-muted" style="cursor: help;" title="A regra de negócio que a IA avaliou nesta linha."></i></th>`).css({textAlign: 'left'}))
+            .append($(`<th>Tipo <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Hard (Rígida): Obrigatória, não pode quebrar. Soft (Flexível): A IA tenta otimizar/minimizar."></i></th>`))
+            .append($(`<th>Ocorrências <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Quantas vezes esta regra foi ativada ou quebrada no cenário atual."></i></th>`))
+            .append($(`<th>Peso <i class="fas fa-info-circle text-muted" style="cursor: help;" title="A penalidade ou recompensa matemática por cada ocorrência."></i></th>`))
+            .append($(`<th>Pontuação <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Ocorrências multiplicadas pelo Peso. A soma de tudo compõe o Score final."></i></th>`))
             .append($(`<th></th>`)));
         analysisTable.append(analysisTHead);
         const analysisTBody = $(`<tbody/>`)
