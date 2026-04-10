@@ -1,3 +1,13 @@
+const constraintTranslations = {
+    "vehicleCapacity": "Capacidade do Veículo",
+    "serviceFinishedAfterMaxEndTime": "Atraso no Horário Limite (Entrega)",
+    "pickupDeliverySameVehicle": "Embarque/Desembarque em Veículos Diferentes",
+    "pickupBeforeDelivery": "Desembarque Antes do Embarque",
+    "maximizeVisitsAssigned": "Maximizar Passageiros Atendidos",
+    "minimizeTravelTime": "Minimizar Tempo de Viagem",
+    "penalizeEmptyVans": "Penalizar Vans Vazias"
+};
+
 function analyzeScore(solution, endpointPath) {
     new bootstrap.Modal("#scoreAnalysisModal").show()
     const scoreAnalysisModalContent = $("#scoreAnalysisModalContent");
@@ -22,11 +32,11 @@ function visualizeScoreAnalysis(scoreAnalysisModalContent, solution, endpointPat
         const analysisTable = $(`<table class="table"/>`).css({textAlign: 'center'});
         const analysisTHead = $(`<thead/>`).append($(`<tr/>`)
             .append($(`<th></th>`))
-            .append($(`<th>Constraint</th>`).css({textAlign: 'left'}))
-            .append($(`<th>Type</th>`))
-            .append($(`<th># Matches</th>`))
-            .append($(`<th>Weight</th>`))
-            .append($(`<th>Score</th>`))
+            .append($(`<th>Restrição Aplicada</th>`).css({textAlign: 'left'}))
+            .append($(`<th>Tipo</th>`))
+            .append($(`<th>Ocorrências</th>`))
+            .append($(`<th>Peso</th>`))
+            .append($(`<th>Pontuação</th>`))
             .append($(`<th></th>`)));
         analysisTable.append(analysisTHead);
         const analysisTBody = $(`<tbody/>`)
@@ -83,9 +93,10 @@ function visualizeConstraintAnalysis(analysisTBody, constraintIndex, constraintA
     let icon = constraintAnalysis.type == "hard" && constraintAnalysis.implicitScore < 0 ? '<span class="fas fa-exclamation-triangle" style="color: red"></span>' : '';
     if (!icon) icon = constraintAnalysis.weight < 0 && constraintAnalysis.matches.length == 0 ? '<span class="fas fa-check-circle" style="color: green"></span>' : '';
 
+    let translatedName = constraintTranslations[constraintAnalysis.name] || constraintAnalysis.name;
     let row = $(`<tr/>`);
     row.append($(`<td/>`).html(icon))
-        .append($(`<td/>`).text(constraintAnalysis.name).css({textAlign: 'left'}))
+        .append($(`<td/>`).text(translatedName).css({textAlign: 'left', fontWeight: '500'}))
         .append($(`<td/>`).text(constraintAnalysis.type))
         .append($(`<td/>`).html(`<b>${constraintAnalysis.matches.length}</b>`))
         .append($(`<td/>`).text(constraintAnalysis.weight))
