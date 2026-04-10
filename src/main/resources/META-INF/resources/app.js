@@ -309,8 +309,10 @@ function renderTimelines(routePlan) {
         const maxEndTime = JSJoda.LocalDateTime.parse(visit.maxEndTime);
         const serviceDuration = JSJoda.Duration.ofSeconds(visit.serviceDuration);
 
+        let translatedName = visit.name.replace("(PICKUP)", "(Embarque)").replace("(DELIVERY)", "(Desembarque)");
+
         const visitGroupElement = $(`<div/>`)
-            .append($(`<h5 class="card-title mb-1"/>`).text(`${visit.name}`));
+            .append($(`<h5 class="card-title mb-1"/>`).text(translatedName));
         byVisitGroupData.add({
             id: visit.id,
             content: visitGroupElement.html()
@@ -327,7 +329,7 @@ function renderTimelines(routePlan) {
 
         if (visit.vehicle == null || !visit.arrivalTime || !visit.startServiceTime || !visit.departureTime) {
             const byJobJobElement = $(`<div/>`)
-                .append($(`<h5 class="card-title mb-1"/>`).text(`Não Atribuído`));
+                .append($(`<h5 class="card-title mb-1"/>`).text(`Não Atribuído`)); // Traduzido
 
             byVisitItemData.add({
                 id: visit.id + '_unassigned',
@@ -345,7 +347,7 @@ function renderTimelines(routePlan) {
 
             const byVehicleElement = $(`<div/>`)
                 .append('<div/>')
-                .append($(`<h5 class="card-title mb-1"/>`).text(visit.name));
+                .append($(`<h5 class="card-title mb-1"/>`).text(translatedName));
 
             const byVisitElement = $(`<div/>`)
                 .append($(`<h5 class="card-title mb-1"/>`).text('Veículo ' + visit.vehicle));
@@ -425,7 +427,6 @@ function renderTimelines(routePlan) {
 }
 
 function analyze() {
-    // see score-analysis.js
     analyzeScore(loadedRoutePlan, "/route-plans/analyze")
 }
 
@@ -441,7 +442,6 @@ function openRecommendationModal(lat, lng) {
         alert(message);
         return;
     }
-    // see recommended-fit.js
     const visitId = Math.max(...loadedRoutePlan.visits.map(c => parseInt(c.id))) + 1;
     newVisit = {id: visitId, location: [lat, lng]};
     addNewVisit(visitId, lat, lng, map, visitMarker);
@@ -461,7 +461,6 @@ function getRecommendationsModal() {
         let updatedVisitList = [...loadedRoutePlan['visits']];
         updatedVisitList.push(updatedVisit);
         let updatedSolution = {...loadedRoutePlan, visits: updatedVisitList};
-        // see recommended-fit.js
         requestRecommendations(updatedVisit.id, updatedSolution, "/route-plans/recommendation")
     }
 }
