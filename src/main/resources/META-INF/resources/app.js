@@ -283,15 +283,11 @@ function renderTimelines(routePlan) {
     byVisitItemData.clear();
 
     $.each(routePlan.vehicles, function (index, vehicle) {
-        const {totalDemand, capacity} = vehicle
-        const percentage = totalDemand / capacity * 100;
-        const vehicleWithLoad = `<h5 class="card-title mb-1">vehicle-${vehicle.id}</h5>
-                                 <div class="progress" data-bs-toggle="tooltip-load" data-bs-placement="left" 
-                                      data-html="true" title="Cargo: ${totalDemand} / Capacity: ${capacity}">
-                                   <div class="progress-bar" role="progressbar" style="width: ${percentage}%">
-                                      ${totalDemand}/${capacity}
-                                   </div>
-                                 </div>`
+        const totalTransported = vehicle.visits ? Math.floor(vehicle.visits.length / 2) : 0;
+
+        const vehicleWithLoad = `<h5 class="card-title mb-1">Veículo ${vehicle.id}</h5>
+                                 <p class="mb-0 text-muted" style="font-size: 0.85rem; line-height: 1.2;">Passageiros transportados: <b>${totalTransported}</b></p>`;
+
         byVehicleGroupData.add({id: vehicle.id, content: vehicleWithLoad});
     });
 
@@ -307,7 +303,6 @@ function renderTimelines(routePlan) {
             content: visitGroupElement.html()
         });
 
-        // Time window per visit.
         byVisitItemData.add({
             id: visit.id + "_readyToDue",
             group: visit.id,
@@ -317,11 +312,10 @@ function renderTimelines(routePlan) {
             style: "background-color: #8AE23433"
         });
 
-        if (visit.vehicle == null) {
+        if (visit.vehicle == null || !visit.arrivalTime || !visit.startServiceTime || !visit.departureTime) {
             const byJobJobElement = $(`<div/>`)
-                .append($(`<h5 class="card-title mb-1"/>`).text(`Unassigned`));
+                .append($(`<h5 class="card-title mb-1"/>`).text(`Não Atribuído`));
 
-            // Unassigned are shown at the beginning of the visit's time window; the length is the service duration.
             byVisitItemData.add({
                 id: visit.id + '_unassigned',
                 group: visit.id,
@@ -341,46 +335,48 @@ function renderTimelines(routePlan) {
                 .append($(`<h5 class="card-title mb-1"/>`).text(visit.name));
 
             const byVisitElement = $(`<div/>`)
-                // visit.vehicle is the vehicle.id due to Jackson serialization
-                .append($(`<h5 class="card-title mb-1"/>`).text('vehicle-' + visit.vehicle));
+                .append($(`<h5 class="card-title mb-1"/>`).text('Veículo ' + visit.vehicle));
 
             const byVehicleTravelElement = $(`<div/>`)
-                .append($(`<h5 class="card-title mb-1"/>`).text('Travel'));
+                .append($(`<h5 class="card-title mb-1"/>`).text('Em Trânsito'));
 
             const previousDeparture = arrivalTime.minusSeconds(visit.drivingTimeSecondsFromPreviousStandstill);
             byVehicleItemData.add({
                 id: visit.id + '_travel',
-                group: visit.vehicle, // visit.vehicle is the vehicle.id due to Jackson serialization
+                group: visit.vehicle,
                 subgroup: visit.vehicle,
                 content: byVehicleTravelElement.html(),
                 start: previousDeparture.toString(),
                 end: visit.arrivalTime,
                 style: "background-color: #f7dd8f90"
             });
+
             if (beforeReady) {
                 const byVehicleWaitElement = $(`<div/>`)
-                    .append($(`<h5 class="card-title mb-1"/>`).text('Wait'));
+                    .append($(`<h5 class="card-title mb-1"/>`).text('Espera'));
 
                 byVehicleItemData.add({
                     id: visit.id + '_wait',
-                    group: visit.vehicle, // visit.vehicle is the vehicle.id due to Jackson serialization
+                    group: visit.vehicle,
                     subgroup: visit.vehicle,
-                    content: byVehicleWaitElement.ahtml(),
+                    content: byVehicleWaitElement.html(),
                     start: visit.arrivalTime,
                     end: visit.minStartTime
                 });
             }
+
             let serviceElementBackground = afterDue ? '#EF292999' : '#83C15955'
 
             byVehicleItemData.add({
                 id: visit.id + '_service',
-                group: visit.vehicle, // visit.vehicle is the vehicle.id due to Jackson serialization
+                group: visit.vehicle,
                 subgroup: visit.vehicle,
                 content: byVehicleElement.html(),
                 start: visit.startServiceTime,
                 end: visit.departureTime,
                 style: "background-color: " + serviceElementBackground
             });
+
             byVisitItemData.add({
                 id: visit.id,
                 group: visit.id,
@@ -389,20 +385,18 @@ function renderTimelines(routePlan) {
                 end: visit.departureTime,
                 style: "background-color: " + serviceElementBackground
             });
-
         }
-
     });
 
     $.each(routePlan.vehicles, function (index, vehicle) {
-        if (vehicle.visits.length > 0) {
+        if (vehicle.visits && vehicle.visits.length > 0) {
             let lastVisit = routePlan.visits.filter((visit) => visit.id === vehicle.visits[vehicle.visits.length -1]).pop();
-            if (lastVisit) {
+            if (lastVisit && lastVisit.departureTime) {
                 byVehicleItemData.add({
                     id: vehicle.id + '_travelBackToHomeLocation',
-                    group: vehicle.id, // visit.vehicle is the vehicle.id due to Jackson serialization
+                    group: vehicle.id,
                     subgroup: vehicle.id,
-                    content: $(`<div/>`).append($(`<h5 class="card-title mb-1"/>`).text('Travel')).html(),
+                    content: $(`<div/>`).append($(`<h5 class="card-title mb-1"/>`).text('Retorno')).html(),
                     start: lastVisit.departureTime,
                     end: vehicle.arrivalTime,
                     style: "background-color: #f7dd8f90"
