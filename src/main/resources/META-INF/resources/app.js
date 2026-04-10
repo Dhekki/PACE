@@ -16,7 +16,7 @@ const analyzeButton = $('#analyzeButton');
 const homeLocationMarkerByIdMap = new Map();
 const visitMarkerByIdMap = new Map();
 
-const map = L.map('map', {doubleClickZoom: false}).setView([51.505, -0.09], 13);
+const map = L.map('map', {doubleClickZoom: false}).setView([-12.26, -38.96], 13);
 const visitGroup = L.layerGroup().addTo(map);
 const homeLocationGroup = L.layerGroup().addTo(map);
 const routeGroup = L.layerGroup().addTo(map);
