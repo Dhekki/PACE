@@ -23,6 +23,17 @@ const routeGroup = L.layerGroup().addTo(map);
 
 /************************************ Time line constants and variable definitions ************************************/
 
+if (typeof vis !== 'undefined' && vis.moment) {
+    vis.moment.defineLocale('pt-br', {
+        months : 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
+        monthsShort : 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'),
+        weekdays : 'Domingo_Segunda-feira_Terça-feira_Quarta-feira_Quinta-feira_Sexta-feira_Sábado'.split('_'),
+        weekdaysShort : 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
+        weekdaysMin : 'Do_2ª_3ª_4ª_5ª_6ª_Sá'.split('_')
+    });
+    vis.moment.locale('pt-br');
+}
+
 const byVehiclePanel = document.getElementById("byVehiclePanel");
 const byVehicleTimelineOptions = {
     timeAxis: {scale: "hour"},
@@ -31,7 +42,8 @@ const byVehicleTimelineOptions = {
     stack: false,
     stackSubgroups: false,
     zoomMin: 1000 * 60 * 60, // A single hour in milliseconds
-    zoomMax: 1000 * 60 * 60 * 24 // A single day in milliseconds
+    zoomMax: 1000 * 60 * 60 * 24, // A single day in milliseconds
+    locale: 'pt-br'
 };
 const byVehicleGroupData = new vis.DataSet();
 const byVehicleItemData = new vis.DataSet();
@@ -46,7 +58,8 @@ const byVisitTimelineOptions = {
     stack: false,
     stackSubgroups: false,
     zoomMin: 1000 * 60 * 60, // A single hour in milliseconds
-    zoomMax: 1000 * 60 * 60 * 24 // A single day in milliseconds
+    zoomMax: 1000 * 60 * 60 * 24, // A single day in milliseconds
+    locale: 'pt-br'
 };
 const byVisitGroupData = new vis.DataSet();
 const byVisitItemData = new vis.DataSet();
