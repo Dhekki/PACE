@@ -5,7 +5,7 @@ function analyzeScore(solution, endpointPath) {
     scoreAnalysisModalContent.text("");
 
     if (solution.score == null) {
-        scoreAnalysisModalContent.text("Score not ready for analysis, try to run the solver first or wait until it advances.");
+        scoreAnalysisModalContent.text("A pontuação não está pronta para análise. Tente executar o solucionador primeiro ou aguarde até que ele avance.");
     } else {
         visualizeScoreAnalysis(scoreAnalysisModalContent, solution, endpointPath)
     }
