@@ -46,11 +46,7 @@ public class VehicleRouteDemoResource {
         FEIRA_DE_SANTANA(0, 40, 3, LocalTime.of(5, 30),
                 1, 2, 10, 15,
                 new Location(-12.2850, -38.9800),
-                new Location(-12.2200, -38.9200)),
-        PHILADELPHIA(1, 55, 6, LocalTime.of(7, 30),
-                1, 2, 15, 30,
-                new Location(39.7656099067391, -76.83782328143754),
-                new Location(40.77636644354855, -74.9300739430771));
+                new Location(-12.2200, -38.9200));
 
         private long seed;
         private int visitCount;
