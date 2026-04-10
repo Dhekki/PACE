@@ -32,11 +32,11 @@ function visualizeScoreAnalysis(scoreAnalysisModalContent, solution, endpointPat
         const analysisTable = $(`<table class="table"/>`).css({textAlign: 'center'});
         const analysisTHead = $(`<thead/>`).append($(`<tr/>`)
             .append($(`<th></th>`))
-            .append($(`<th>Restrição Aplicada <i class="fas fa-info-circle text-muted" style="cursor: help;" title="A regra de negócio que a IA avaliou nesta linha."></i></th>`).css({textAlign: 'left'}))
-            .append($(`<th>Tipo <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Hard (Rígida): Obrigatória, não pode quebrar. Soft (Flexível): A IA tenta otimizar/minimizar."></i></th>`))
-            .append($(`<th>Ocorrências <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Quantas vezes esta regra foi ativada ou quebrada no cenário atual."></i></th>`))
-            .append($(`<th>Peso <i class="fas fa-info-circle text-muted" style="cursor: help;" title="A penalidade ou recompensa matemática por cada ocorrência."></i></th>`))
-            .append($(`<th>Pontuação <i class="fas fa-info-circle text-muted" style="cursor: help;" title="Ocorrências multiplicadas pelo Peso. A soma de tudo compõe o Score final."></i></th>`))
+            .append($(`<th class="text-nowrap">Restrição Aplicada <i class="fas fa-info-circle text-muted ms-1" style="cursor: help;" title="A regra de negócio avaliada."></i></th>`).css({textAlign: 'left'}))
+            .append($(`<th class="text-nowrap">Tipo <i class="fas fa-info-circle text-muted ms-1" style="cursor: help;" title="Hard: Obrigatória, invalida o plano se quebrada.&#10;Medium: Regra de negócio prioritária.&#10;Soft: Flexível, busca apenas minimizar (ex: tempo)."></i></th>`))
+            .append($(`<th class="text-nowrap">Ocorrências <i class="fas fa-info-circle text-muted ms-1" style="cursor: help;" title="Quantos elementos (ex: veículos ou passageiros) ativaram esta regra."></i></th>`))
+            .append($(`<th class="text-nowrap">Peso <i class="fas fa-info-circle text-muted ms-1" style="cursor: help;" title="A penalidade base."></i></th>`))
+            .append($(`<th class="text-nowrap">Pontuação <i class="fas fa-info-circle text-muted ms-1" style="cursor: help;" title="O impacto total.&#10;Em regras dinâmicas (como tempo), soma os segundos de cada ocorrência.&#10;Nas demais, multiplica ocorrências pelo peso."></i></th>`))
             .append($(`<th></th>`)));
         analysisTable.append(analysisTHead);
         const analysisTBody = $(`<tbody/>`)
