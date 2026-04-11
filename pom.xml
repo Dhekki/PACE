@@ -59,6 +59,12 @@
       <groupId>ai.timefold.solver</groupId>
       <artifactId>timefold-solver-quarkus-jackson</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.github.librepdf</groupId>
+      <artifactId>openpdf</artifactId>
+      <version>3.0.3</version>
+      <scope>compile</scope>
+    </dependency>
 
     <!-- Testing -->
     <dependency>
