@@ -38,8 +38,17 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("demo-data")
 public class VehicleRouteDemoResource {
 
-    private static final String[] FIRST_NAMES = { "Amy", "Beth", "Carl", "Dan", "Elsa", "Flo", "Gus", "Hugo", "Ivy", "Jay" };
-    private static final String[] LAST_NAMES = { "Cole", "Fox", "Green", "Jones", "King", "Li", "Poe", "Rye", "Smith", "Watt" };
+    private static final String[] FIRST_NAMES = {
+            "Ana", "Bruno", "Carlos", "Daniela", "Eduardo", "Fernanda",
+            "Gabriel", "Helena", "Igor", "Juliana", "Lucas", "Mariana",
+            "Rafael", "Beatriz", "Thiago"
+    };
+
+    private static final String[] LAST_NAMES = {
+            "Silva", "Santos", "Oliveira", "Souza", "Rodrigues",
+            "Ferreira", "Alves", "Pereira", "Lima", "Costa",
+            "Carvalho", "Ribeiro", "Mendes"
+    };
     private static final int[] SERVICE_DURATION_MINUTES = { 2, 3, 4, 5 };
 
     public enum DemoData {
