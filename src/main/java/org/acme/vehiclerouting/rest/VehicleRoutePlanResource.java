@@ -37,6 +37,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.acme.vehiclerouting.rest.PdfReportGeneratorService;
 
 import java.util.Collection;
 import java.util.List;
@@ -64,6 +65,9 @@ public class VehicleRoutePlanResource {
         this.solverManager = null;
         this.solutionManager = null;
     }
+
+    @Inject
+    PdfReportGeneratorService pdfReportGeneratorService;
 
     @Inject
     public VehicleRoutePlanResource(SolverManager<VehicleRoutePlan, String> solverManager,
@@ -295,5 +299,29 @@ public class VehicleRoutePlanResource {
             LOGGER.info(route.toString());
         }
         LOGGER.info("==============================");
+    }
+
+    @GET
+    @Path("{id}/report")
+    @Produces("application/pdf")
+    public Response downloadPdfReport(@PathParam("id") String id) {
+        try {
+            VehicleRoutePlan routePlan = getRoutePlanAndCheckForExceptions(id);
+
+            if (solverManager.getSolverStatus(id) == SolverStatus.NOT_SOLVING) {
+                solutionManager.update(routePlan);
+            }
+
+            byte[] pdfBytes = pdfReportGeneratorService.generateRoutePlanReport(routePlan);
+
+            return Response.ok(pdfBytes)
+                    .header("Content-Disposition", "attachment; filename=\"Rota_" + id + ".pdf\"")
+                    .build();
+
+        } catch (VehicleRoutingSolverException e) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Rota não encontrada.").build();
+        } catch (Exception e) {
+            return Response.serverError().entity("Erro ao gerar PDF: " + e.getMessage()).build();
+        }
     }
 }
