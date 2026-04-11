@@ -44,6 +44,8 @@ class VehicleRoutingPlanResourceTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private static final String DEMO_DATA_ID = "FEIRA_DE_SANTANA";
+
     @BeforeAll
     static void initializeJacksonParser() {
         OBJECT_MAPPER.findAndRegisterModules();
@@ -107,7 +109,7 @@ class VehicleRoutingPlanResourceTest {
 
     private VehicleRoutePlan generateInitialSolution() {
         VehicleRoutePlan vehicleRoutePlan = given()
-                .when().get("/demo-data/FIRENZE")
+                .when().get("/demo-data/" + DEMO_DATA_ID)
                 .then()
                 .statusCode(200)
                 .extract()
@@ -130,21 +132,35 @@ class VehicleRoutingPlanResourceTest {
                         get("/route-plans/" + jobId + "/status")
                                 .jsonPath().get("solverStatus")));
 
-        VehicleRoutePlan solution = get("/route-plans/" + jobId).then().extract().as(VehicleRoutePlan.class);
-        return solution;
+        return get("/route-plans/" + jobId).then().extract().as(VehicleRoutePlan.class);
     }
 
     private Visit generateNewVisit(VehicleRoutePlan solution) {
-        Passenger passenger = new Passenger("p_test", "Test Passenger",
-                new Location(43.778008, 11.223969), new Location(43.778008, 11.223969), 2);
+        Location pickupLocation = new Location(-12.2682, -38.9655);
+        Location deliveryLocation = new Location(-12.1985, -38.9722);
 
-        Visit newVisit = new Visit(String.valueOf(solution.getVisits().size() + 1),
+        String newId = "p_test_integracao_" + System.currentTimeMillis();
+        Passenger passenger = new Passenger(newId, "Passageiro de Teste (Integração)",
+                pickupLocation, deliveryLocation, 1);
+
+        solution.getPassengers().add(passenger);
+
+        Visit pickupVisit = new Visit(newId + "_P",
                 passenger, VisitType.PICKUP,
                 LocalDateTime.now().plusDays(1).withHour(8).withMinute(0),
                 LocalDateTime.now().plusDays(1).withHour(14).withMinute(0),
                 Duration.ofMinutes(10));
-        solution.getVisits().add(newVisit);
-        return newVisit;
+
+        Visit deliveryVisit = new Visit(newId + "_D",
+                passenger, VisitType.DELIVERY,
+                LocalDateTime.now().plusDays(1).withHour(8).withMinute(0),
+                LocalDateTime.now().plusDays(1).withHour(14).withMinute(0),
+                Duration.ofMinutes(10));
+
+        solution.getVisits().add(pickupVisit);
+        solution.getVisits().add(deliveryVisit);
+
+        return pickupVisit;
     }
 
     private List<Pair<VehicleRecommendation, ScoreAnalysis>> getRecommendations(VehicleRoutePlan solution, Visit newVisit) {
@@ -194,9 +210,48 @@ class VehicleRoutingPlanResourceTest {
         assertNotEquals(updatedSolution.getScore().toString(), solution.getScore().toString());
     }
 
+    @Test
+    void downloadPdfReportReturnsValidBinary() {
+        VehicleRoutePlan vehicleRoutePlan = given()
+                .when().get("/demo-data/" + DEMO_DATA_ID)
+                .then()
+                .statusCode(200)
+                .extract()
+                .as(VehicleRoutePlan.class);
+
+        String jobId = given()
+                .contentType(ContentType.JSON)
+                .body(vehicleRoutePlan)
+                .expect().contentType(ContentType.TEXT)
+                .when().post("/route-plans")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asString();
+
+        await()
+                .atMost(Duration.ofMinutes(1))
+                .pollInterval(Duration.ofMillis(500L))
+                .until(() -> SolverStatus.NOT_SOLVING.name().equals(
+                        get("/route-plans/" + jobId + "/status")
+                                .jsonPath().get("solverStatus")));
+
+        byte[] pdfBytes = given()
+                .when().get("/route-plans/" + jobId + "/report")
+                .then()
+                .statusCode(200)
+                .contentType("application/pdf")
+                .header("Content-Disposition", "attachment; filename=\"Rota_" + jobId + ".pdf\"")
+                .extract()
+                .asByteArray();
+
+        assertNotNull(pdfBytes, "O array de bytes do PDF não deveria ser nulo");
+        assertTrue(pdfBytes.length > 100, "O PDF gerado parece estar vazio ou corrompido");
+    }
+
     private VehicleRoutePlan solveDemoData() {
         VehicleRoutePlan vehicleRoutePlan = given()
-                .when().get("/demo-data/FIRENZE")
+                .when().get("/demo-data/" + DEMO_DATA_ID)
                 .then()
                 .statusCode(200)
                 .extract()
