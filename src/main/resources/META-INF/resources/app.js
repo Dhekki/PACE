@@ -10,6 +10,7 @@ const solveButton = $('#solveButton');
 const stopSolvingButton = $('#stopSolvingButton');
 const vehiclesTable = $('#vehicles');
 const analyzeButton = $('#analyzeButton');
+const downloadPdfButton = $('#downloadPdfButton');
 
 /*************************************** Map constants and variable definitions  **************************************/
 
@@ -92,6 +93,7 @@ $(document).ready(function () {
     solveButton.click(solve);
     stopSolvingButton.click(stopSolving);
     analyzeButton.click(analyze);
+    downloadPdfButton.click(downloadPdfReport);
     refreshSolvingButtons(false);
 
     // HACK to allow vis-timeline to work within Bootstrap tabs
@@ -543,11 +545,16 @@ function solve() {
 }
 
 function refreshSolvingButtons(solving) {
+    let justFinished = (optimizing === true && solving === false);
+
     optimizing = solving;
+
     if (solving) {
         $("#solveButton").hide();
         $("#visitButton").hide();
         $("#stopSolvingButton").show();
+        $("#downloadPdfButton").hide();
+
         if (autoRefreshIntervalId == null) {
             autoRefreshIntervalId = setInterval(refreshRoutePlan, 2000);
         }
@@ -555,9 +562,19 @@ function refreshSolvingButtons(solving) {
         $("#solveButton").show();
         $("#visitButton").show();
         $("#stopSolvingButton").hide();
+
+        if (scheduleId) {
+            $("#downloadPdfButton").show();
+        }
+
         if (autoRefreshIntervalId != null) {
             clearInterval(autoRefreshIntervalId);
             autoRefreshIntervalId = null;
+        }
+
+        if (justFinished && scheduleId) {
+            console.log("Otimização concluída. Disparando download automático do relatório PDF...");
+            downloadPdfReport();
         }
     }
 }
@@ -667,4 +684,25 @@ function showError(title, xhr) {
     $("#notificationPanel").append(notification);
     notification.toast({delay: 30000});
     notification.toast('show');
+}
+
+function downloadPdfReport() {
+    if (!scheduleId) return;
+
+    fetch(`/route-plans/${scheduleId}/report`)
+        .then(response => {
+            if (!response.ok) throw new Error("Erro ao gerar PDF.");
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Rota_${scheduleId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => showError("Falha no Download do PDF", { statusText: error.message }));
 }
