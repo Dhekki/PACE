@@ -545,8 +545,6 @@ function solve() {
 }
 
 function refreshSolvingButtons(solving) {
-    let justFinished = (optimizing === true && solving === false);
-
     optimizing = solving;
 
     if (solving) {
@@ -572,10 +570,6 @@ function refreshSolvingButtons(solving) {
             autoRefreshIntervalId = null;
         }
 
-        if (justFinished && scheduleId) {
-            console.log("Otimização concluída. Disparando download automático do relatório PDF...");
-            downloadPdfReport();
-        }
     }
 }
 
