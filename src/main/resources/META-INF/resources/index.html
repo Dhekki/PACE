@@ -114,19 +114,24 @@
                         </li>
                     </ul>
                 </div>
-                <div class="col-3">
-                    <button id="solveButton" type="button" class="btn btn-success me-2">
+                <div class="col-auto d-flex align-items-center gap-2">
+                    <button id="solveButton" type="button" class="btn btn-success">
                         <i class="fas fa-play"></i> Otimizar Rotas
                     </button>
-                    <button id="stopSolvingButton" type="button" class="btn btn-danger p-2 me-2">
+                    <button id="stopSolvingButton" type="button" class="btn btn-danger" style="display: none;">
                         <i class="fas fa-stop"></i> Parar
                     </button>
-                    <button id="downloadPdfButton" type="button" class="btn btn-primary me-2" style="display: none;">
+                    <button id="downloadPdfButton" type="button" class="btn btn-primary" style="display: none;">
                         <i class="fas fa-file-pdf"></i> PDF Motorista
                     </button>
                     <button id="analyzeButton" type="button" class="btn btn-secondary">
                         <span class="fas fa-chart-bar"></span> Análise
                     </button>
+
+                    <input type="file" id="csvUpload" accept=".csv" style="display: none;" />
+                    <label for="csvUpload" class="btn btn-outline-secondary m-0" style="cursor: pointer;">
+                        <i class="fas fa-upload"></i>
+                    </label>
                 </div>
             </div>
         </div>

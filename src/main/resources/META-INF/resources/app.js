@@ -96,24 +96,36 @@ $(document).ready(function () {
     downloadPdfButton.click(downloadPdfReport);
     refreshSolvingButtons(false);
 
-    // HACK to allow vis-timeline to work within Bootstrap tabs
     $("#byVehicleTab").on('shown.bs.tab', function (event) {
         byVehicleTimeline.redraw();
     })
     $("#byVisitTab").on('shown.bs.tab', function (event) {
         byVisitTimeline.redraw();
     })
-    // Add new visit
     map.on('click', function (e) {
         visitMarker = L.circleMarker(e.latlng);
         visitMarker.setStyle({color: 'green'});
         visitMarker.addTo(map);
         openRecommendationModal(e.latlng.lat, e.latlng.lng);
     });
-    // Remove visit mark
     $("#newVisitModal").on("hidden.bs.modal", function () {
         map.removeLayer(visitMarker);
     });
+
+    $('#csvUpload').on('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            parseAndLoadCsv(text);
+        };
+        reader.readAsText(file);
+
+        this.value = null;
+    });
+
     setupAjax();
     fetchDemoData();
 });
@@ -534,14 +546,20 @@ function setupAjax() {
 }
 
 function solve() {
-    $.post("/route-plans", JSON.stringify(loadedRoutePlan), function (data) {
+    let planToSend = JSON.parse(JSON.stringify(loadedRoutePlan));
+
+    planToSend.visits.forEach(visit => {
+        delete visit.name;
+        delete visit.location;
+    });
+
+    $.post("/route-plans", JSON.stringify(planToSend), function (data) {
         scheduleId = data;
         refreshSolvingButtons(true);
     }).fail(function (xhr, ajaxOptions, thrownError) {
-            showError("Start solving failed.", xhr);
-            refreshSolvingButtons(false);
-        },
-        "text");
+        showError("Start solving failed.", xhr);
+        refreshSolvingButtons(false);
+    }, "text");
 }
 
 function refreshSolvingButtons(solving) {
@@ -569,7 +587,6 @@ function refreshSolvingButtons(solving) {
             clearInterval(autoRefreshIntervalId);
             autoRefreshIntervalId = null;
         }
-
     }
 }
 
@@ -699,4 +716,112 @@ function downloadPdfReport() {
             document.body.removeChild(a);
         })
         .catch(error => showError("Falha no Download do PDF", { statusText: error.message }));
+}
+
+function parseAndLoadCsv(csvText) {
+    const lines = csvText.split('\n');
+
+    let parsedVehicles = [];
+    let parsedPassengers = [];
+    let parsedVisits = [];
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split('T')[0];
+
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+
+        let cols = line.split(/[,;]/).map(c => c.trim());
+        if (cols.length < 4) continue;
+
+        let id = cols[0];
+        let capOrDemand = parseInt(cols[1]);
+        let latOrig = parseFloat(cols[2]);
+        let lonOrig = parseFloat(cols[3]);
+
+        if (id.toLowerCase().startsWith('van-')) {
+            parsedVehicles.push({
+                id: id.replace(/van-/i, ''),
+                capacity: capOrDemand,
+                homeLocation: [latOrig, lonOrig],
+                departureTime: `${dateStr}T07:00:00`,
+                visits: [],
+                maxLoad: 0,
+                totalDrivingTimeSeconds: 0
+            });
+        } else {
+            let latDest = parseFloat(cols[4]);
+            let lonDest = parseFloat(cols[5]);
+
+            let horaInicio = (cols[6] || "08:00").padStart(5, '0');
+            let horaFim = (cols[7] || "10:00").padStart(5, '0');
+            let duracaoMinutos = cols[8] || "10";
+
+            let duracaoSegundos = parseInt(duracaoMinutos) * 60;
+
+            let passengerObj = {
+                id: "p_" + id.replace(/\s+/g, '_').toLowerCase(),
+                name: id,
+                pickupLocation: [latOrig, lonOrig],
+                dropoffLocation: [latDest, lonDest],
+                demand: capOrDemand
+            };
+            parsedPassengers.push(passengerObj);
+
+            parsedVisits.push({
+                id: passengerObj.id + "_P",
+                name: passengerObj.name + " (PICKUP)",
+                passenger: passengerObj.id,
+                visitType: "PICKUP",
+                location: [latOrig, lonOrig],
+                minStartTime: `${dateStr}T${horaInicio}:00`,
+                maxEndTime: `${dateStr}T${horaFim}:00`,
+                serviceDuration: duracaoSegundos
+            });
+
+            parsedVisits.push({
+                id: passengerObj.id + "_D",
+                name: passengerObj.name + " (DELIVERY)",
+                passenger: passengerObj.id,
+                visitType: "DELIVERY",
+                location: [latDest, lonDest],
+                minStartTime: `${dateStr}T${horaInicio}:00`,
+                maxEndTime: `${dateStr}T${horaFim}:00`,
+                serviceDuration: duracaoSegundos
+            });
+        }
+    }
+
+    if (parsedVehicles.length === 0 || parsedPassengers.length === 0) {
+        alert("Erro: O CSV precisa ter pelo menos 1 Van e 1 Passageiro.");
+        return;
+    }
+
+    loadedRoutePlan = {
+        name: "Upload Customizado CSV",
+        vehicles: parsedVehicles,
+        passengers: parsedPassengers,
+        visits: parsedVisits,
+        southWestCorner: [-12.30, -39.00],
+        northEastCorner: [-12.15, -38.90],
+        startDateTime: `${dateStr}T00:00:00`,
+        endDateTime: `${dateStr}T23:59:59`,
+        solverStatus: "NOT_SOLVING",
+        totalDrivingTimeSeconds: 0
+    };
+
+    homeLocationGroup.clearLayers();
+    homeLocationMarkerByIdMap.clear();
+    visitGroup.clearLayers();
+    visitMarkerByIdMap.clear();
+    routeGroup.clearLayers();
+    scheduleId = null;
+    initialized = false;
+
+    renderRoutes(loadedRoutePlan);
+    renderTimelines(loadedRoutePlan);
+
+    console.log("CSV Carregado com Sucesso! Passageiros:", parsedPassengers.length, "Vans:", parsedVehicles.length);
 }
