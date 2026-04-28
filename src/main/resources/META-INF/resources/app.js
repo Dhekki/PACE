@@ -26,11 +26,11 @@ const routeGroup = L.layerGroup().addTo(map);
 
 if (typeof vis !== 'undefined' && vis.moment) {
     vis.moment.defineLocale('pt-br', {
-        months : 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
-        monthsShort : 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'),
-        weekdays : 'Domingo_Segunda-feira_Terça-feira_Quarta-feira_Quinta-feira_Sexta-feira_Sábado'.split('_'),
-        weekdaysShort : 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
-        weekdaysMin : 'Do_2ª_3ª_4ª_5ª_6ª_Sá'.split('_')
+        months: 'Janeiro_Fevereiro_Março_Abril_Maio_Junho_Julho_Agosto_Setembro_Outubro_Novembro_Dezembro'.split('_'),
+        monthsShort: 'Jan_Fev_Mar_Abr_Mai_Jun_Jul_Ago_Set_Out_Nov_Dez'.split('_'),
+        weekdays: 'Domingo_Segunda-feira_Terça-feira_Quarta-feira_Quinta-feira_Sexta-feira_Sábado'.split('_'),
+        weekdaysShort: 'Dom_Seg_Ter_Qua_Qui_Sex_Sáb'.split('_'),
+        weekdaysMin: 'Do_2ª_3ª_4ª_5ª_6ª_Sá'.split('_')
     });
     vis.moment.locale('pt-br');
 }
@@ -66,8 +66,8 @@ const byVisitGroupData = new vis.DataSet();
 const byVisitItemData = new vis.DataSet();
 const byVisitTimeline = new vis.Timeline(byVisitPanel, byVisitItemData, byVisitGroupData, byVisitTimelineOptions);
 
-const BG_COLORS = ["#009E73","#0072B2","#D55E00","#000000","#CC79A7","#E69F00","#F0E442","#F6768E","#C10020","#A6BDD7","#803E75","#007D34","#56B4E9","#999999","#8DD3C7","#FFD92F","#B3DE69","#FB8072","#80B1D3","#B15928","#CAB2D6","#1B9E77","#E7298A","#6A3D9A"];
-const FG_COLORS = ["#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#000000","#000000","#FFFFFF","#FFFFFF","#000000","#FFFFFF","#FFFFFF","#FFFFFF","#000000","#000000","#000000","#000000","#FFFFFF","#000000","#FFFFFF","#000000","#FFFFFF","#FFFFFF","#FFFFFF"];
+const BG_COLORS = ["#009E73", "#0072B2", "#D55E00", "#000000", "#CC79A7", "#E69F00", "#F0E442", "#F6768E", "#C10020", "#A6BDD7", "#803E75", "#007D34", "#56B4E9", "#999999", "#8DD3C7", "#FFD92F", "#B3DE69", "#FB8072", "#80B1D3", "#B15928", "#CAB2D6", "#1B9E77", "#E7298A", "#6A3D9A"];
+const FG_COLORS = ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#000000", "#000000", "#FFFFFF", "#FFFFFF", "#000000", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#000000", "#000000", "#000000", "#000000", "#FFFFFF", "#000000", "#FFFFFF", "#000000", "#FFFFFF", "#FFFFFF", "#FFFFFF"];
 let COLOR_MAP = new Map()
 let nextColorIndex = 0
 
@@ -77,18 +77,31 @@ function pickColor(object) {
         return color;
     }
     let index = nextColorIndex++;
-    color = {bg : BG_COLORS[index], fg: FG_COLORS[index]};
-    COLOR_MAP.set(object,color);
+    color = {bg: BG_COLORS[index], fg: FG_COLORS[index]};
+    COLOR_MAP.set(object, color);
     return color;
 }
 
 /************************************ Initialize ************************************/
 
 $(document).ready(function () {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    let usingFallback = false;
+    const osmUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const cartoUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    const baseMapLayer = L.tileLayer(osmUrl, {
         maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors | Fallback: <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd'
     }).addTo(map);
+
+    baseMapLayer.on('tileerror', function (error) {
+        if (!usingFallback) {
+            console.warn("⚠️ Servidor do OpenStreetMap falhou ou bloqueou o acesso. Alternando automaticamente para o provedor Fallback (CARTO Voyager)...");
+            usingFallback = true;
+            baseMapLayer.setUrl(cartoUrl);
+        }
+    });
 
     solveButton.click(solve);
     stopSolvingButton.click(stopSolving);
@@ -112,12 +125,12 @@ $(document).ready(function () {
         map.removeLayer(visitMarker);
     });
 
-    $('#csvUpload').on('change', function(e) {
+    $('#csvUpload').on('change', function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             const text = e.target.result;
             parseAndLoadCsv(text);
         };
@@ -167,7 +180,7 @@ function getHomeLocationMarker(vehicle) {
         iconSize: [24, 24],
         iconAnchor: [12, 12]
     });
-    marker = L.marker(vehicle.homeLocation, { icon: homeIcon });
+    marker = L.marker(vehicle.homeLocation, {icon: homeIcon});
     marker.addTo(homeLocationGroup).bindPopup();
     homeLocationMarkerByIdMap.set(vehicle.id, marker);
     return marker;
@@ -208,7 +221,7 @@ function getVisitMarker(visit) {
         iconAnchor: [12, 12]
     });
 
-    marker = L.marker(visit.location, { icon: visitIcon });
+    marker = L.marker(visit.location, {icon: visitIcon});
     marker.addTo(visitGroup).bindPopup();
     visitMarkerByIdMap.set(visit.id, marker);
     return marker;
@@ -286,12 +299,12 @@ function renderRoutes(solution) {
         const pointParams = routePoints.map(loc => `point=${loc[0]},${loc[1]}`).join('&');
         const ghUrl = `http://localhost:8989/route?${pointParams}&profile=car&points_encoded=false`;
 
-        $.getJSON(ghUrl, function(data) {
+        $.getJSON(ghUrl, function (data) {
             if (data && data.paths && data.paths.length > 0) {
                 const coordinates = data.paths[0].points.coordinates.map(coord => [coord[1], coord[0]]);
                 L.polyline(coordinates, {color: color, weight: 5, opacity: 0.8}).addTo(routeGroup);
             }
-        }).fail(function() {
+        }).fail(function () {
             console.warn(`Falha ao buscar geometria da Van ${vehicle.id}. Usando linha reta.`);
             L.polyline(routePoints, {color: color, dashArray: '5, 10'}).addTo(routeGroup);
         });
@@ -421,7 +434,7 @@ function renderTimelines(routePlan) {
 
     $.each(routePlan.vehicles, function (index, vehicle) {
         if (vehicle.visits && vehicle.visits.length > 0) {
-            let lastVisit = routePlan.visits.filter((visit) => visit.id === vehicle.visits[vehicle.visits.length -1]).pop();
+            let lastVisit = routePlan.visits.filter((visit) => visit.id === vehicle.visits[vehicle.visits.length - 1]).pop();
             if (lastVisit && lastVisit.departureTime) {
                 byVehicleItemData.add({
                     id: vehicle.id + '_travelBackToHomeLocation',
@@ -465,15 +478,20 @@ function openRecommendationModal(lat, lng) {
 
 function getRecommendationsModal() {
     let formValid = true;
-    formValid = validateFormField(newVisit, 'name' , '#inputName') && formValid;
-    formValid = validateFormField(newVisit, 'demand' , '#inputDemand') && formValid;
-    formValid = validateFormField(newVisit, 'minStartTime' , '#inputMinStartTime') && formValid;
-    formValid = validateFormField(newVisit, 'maxEndTime' , '#inputMaxStartTime') && formValid;
-    formValid = validateFormField(newVisit, 'serviceDuration' , '#inputDuration') && formValid;
+    formValid = validateFormField(newVisit, 'name', '#inputName') && formValid;
+    formValid = validateFormField(newVisit, 'demand', '#inputDemand') && formValid;
+    formValid = validateFormField(newVisit, 'minStartTime', '#inputMinStartTime') && formValid;
+    formValid = validateFormField(newVisit, 'maxEndTime', '#inputMaxStartTime') && formValid;
+    formValid = validateFormField(newVisit, 'serviceDuration', '#inputDuration') && formValid;
     if (formValid) {
         const updatedMinStartTime = JSJoda.LocalDateTime.parse(newVisit['minStartTime'], JSJoda.DateTimeFormatter.ofPattern('yyyy-M-d HH:mm')).format(JSJoda.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         const updatedMaxEndTime = JSJoda.LocalDateTime.parse(newVisit['maxEndTime'], JSJoda.DateTimeFormatter.ofPattern('yyyy-M-d HH:mm')).format(JSJoda.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        const updatedVisit = {...newVisit, serviceDuration: `PT${newVisit['serviceDuration']}M`, minStartTime: updatedMinStartTime, maxEndTime: updatedMaxEndTime};
+        const updatedVisit = {
+            ...newVisit,
+            serviceDuration: `PT${newVisit['serviceDuration']}M`,
+            minStartTime: updatedMinStartTime,
+            maxEndTime: updatedMaxEndTime
+        };
         let updatedVisitList = [...loadedRoutePlan['visits']];
         updatedVisitList.push(updatedVisit);
         let updatedSolution = {...loadedRoutePlan, visits: updatedVisitList};
@@ -494,13 +512,18 @@ function validateFormField(target, fieldName, inputName) {
 function applyRecommendationModal(recommendations) {
     let checkedRecommendation = null;
     recommendations.forEach((recommendation, index) => {
-        if ($('#option'+ index).is(":checked")) {
+        if ($('#option' + index).is(":checked")) {
             checkedRecommendation = recommendations[index];
         }
     });
     const updatedMinStartTime = JSJoda.LocalDateTime.parse(newVisit['minStartTime'], JSJoda.DateTimeFormatter.ofPattern('yyyy-M-d HH:mm')).format(JSJoda.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
     const updatedMaxEndTime = JSJoda.LocalDateTime.parse(newVisit['maxEndTime'], JSJoda.DateTimeFormatter.ofPattern('yyyy-M-d HH:mm')).format(JSJoda.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    const updatedVisit = {...newVisit, serviceDuration: `PT${newVisit['serviceDuration']}M`, minStartTime: updatedMinStartTime, maxEndTime: updatedMaxEndTime};
+    const updatedVisit = {
+        ...newVisit,
+        serviceDuration: `PT${newVisit['serviceDuration']}M`,
+        minStartTime: updatedMinStartTime,
+        maxEndTime: updatedMaxEndTime
+    };
     let updatedVisitList = [...loadedRoutePlan['visits']];
     updatedVisitList.push(updatedVisit);
     let updatedSolution = {...loadedRoutePlan, visits: updatedVisitList};
@@ -715,7 +738,7 @@ function downloadPdfReport() {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         })
-        .catch(error => showError("Falha no Download do PDF", { statusText: error.message }));
+        .catch(error => showError("Falha no Download do PDF", {statusText: error.message}));
 }
 
 function parseAndLoadCsv(csvText) {
